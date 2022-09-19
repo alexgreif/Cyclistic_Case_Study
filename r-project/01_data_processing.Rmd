@@ -3,11 +3,11 @@ title: "Cyclistic Case Study"
 subtitle: "Part I - Data Processing"
 output:
   html_document:
-    code_folding: hide
+    code_folding: show
     number_sections: TRUE
     toc: TRUE
     toc_float:
-      collapsed: FALSE
+      collapsed: TRUE
       smooth_scroll: TRUE
 ---
 
@@ -27,7 +27,7 @@ The final presentation of the findings can be downloaded as a [Powerpoint](./cyc
 
 # Introduction
 
-This is a case study in Google's Data Analytics Professional Certificate. The goal is to help Cyclistic, a fictitious bike-share company based in Chicago, convert casuals to members. The term casual refers to a user without a membership that either pays for each individual ride or purchases a day pass. Members have annual contracts - I go into more detail in [Part II](./02_data_analysis.html "Cyclistic Case Study Part II - Analysis"). We have been tasked to identify differences between the two using [historical trip data](https://divvybikes.com/system-data "Original data sets"), which has been provided by [Divvy](https://divvybikes.com/ "Divvy's website"). I wrote a [separate R script](./r_scripts/load.R) to import the data. The aim of this Markdown is to process it to prepare it for analysis.
+The scenario for this case study comes from Google's Data Analytics Professional Certificate. The goal is to help Cyclistic, a fictitious bike-share company based in Chicago, convert casuals to members. The term casual refers to a user without a membership that either pays for each individual ride or purchases a day pass. Members have annual contracts - I go into more detail in [Part II](./02_data_analysis.html "Cyclistic Case Study Part II - Analysis"). We have been tasked to identify differences between the two using [historical trip data](https://divvybikes.com/system-data "Original data sets"), which has been provided by [Divvy](https://divvybikes.com/ "Divvy's website"). I wrote a [separate R script](./r_scripts/load.R) to import the data. The aim of this Markdown is to process it to prepare it for analysis.
 
 # The data
 
@@ -691,7 +691,7 @@ Looks like no stations are exclusively used for extreme outliers in terms of rid
 
 ## Choosing a cut-off value
 
-With the size of the current data set, a few invalid data points would probably not affect our analysis too much. Yet, for reasons mentioned earlier (properly focusing on the majority of customers and potential members rather than trying to please every single one and letting extreme customer behaviors affect our marketing, possibly resulting in not properly targeting any customers), I would like to exclude some more outliers. Since there is no clear cut-off or other criteria by which we can define outliers or identify invalid data points, we will simply have to make an arbitrary, albeit informed, decision.
+Given the size of the current data set, a few invalid data points would probably not affect our analysis too much. Yet, for reasons mentioned earlier (properly focusing on the majority of customers and potential members rather than trying to please every single one and letting extreme customer behaviors affect our marketing, possibly resulting in not properly targeting any customers), I would prefer to exclude some more outliers. Since there is no clear cut-off or other criteria by which we can define outliers or identify invalid data points, we will simply have to make a somewhat arbitrary but informed decision.
 
 According to their [website](https://divvybikes.com/pricing "Divvy pricing"), Divvy memberships include unlimited 45 minute rides, after which members need to either switch bikes or pay \$0.16 per minute. Non-members have to pay \$1 to unlock the bike and then start paying \$0.16 per minute straight from the start. A day pass includes unlimited 3-hour rides. Based on this information, it is relatively unlikely for anyone, member or casual, to ride their bike for more than three hours, since they could just switch bikes earlier to avoid any additional costs. Also, it would be pointless for customers that regularly do trips lasting 2 1/3 hours or longer to switch to a membership, because at \$0.16 per minute, a trip like that would already be more expensive than a day pass, even for a member that only starts paying after 45 minutes. Accordingly, unless Cyclistic are looking to change their membership conditions or pricing, these customers are not our targets for memberships. Yet, I will include every trip up to a duration of 4 hours. This will include people using a day pass and allows for a little margin on top of those three hours to include even those that perhaps miscalculated the duration of their trip or underestimated how long it would take them to get to the next station. However, I might subset the data set based on trip duration later in my analysis, depending on which question I am looking to answer.
 

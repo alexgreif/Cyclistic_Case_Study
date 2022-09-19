@@ -7,7 +7,7 @@ output:
     number_sections: TRUE
     toc: TRUE
     toc_float:
-      collapsed: FALSE
+      collapsed: TRUE
       smooth_scroll: TRUE
 ---
 
@@ -42,7 +42,7 @@ The final presentation of the findings can be downloaded as a [Powerpoint](./cyc
 
 ## The problem
 
-The problem stems from a case study in Google's Data Analytics Professional Certificate. The goal is to help Cyclistic, a fictitious bike-share company based in Chicago, convert casuals to members. The term casual refers to a user without a membership that either pays for each individual ride or purchases a day pass. Members have annual contracts - more on the specifics later. We have been tasked to identify differences between the two using [historical trip data](https://divvybikes.com/system-data "Original data sets"), which has been provided by [Divvy](https://divvybikes.com/ "Divvy's website"). I wrote a [separate Markdown](./01_data_processing.html "Cyclistic Case Study Part I - Data Processing") in which I processed the data and a [script](./r_scripts/load.R) to import it. The focus of this Markdown is to analyze the data and identify differences between members and casuals that can inform Cyclistic's marketing strategy.
+The scenario comes from a case study in Google's Data Analytics Professional Certificate. The goal is to help Cyclistic, a fictitious bike-share company based in Chicago, convert casuals to members. The term casual refers to a user without a membership that either pays for each individual ride or purchases a day pass. Members have annual contracts - more on the specifics later. We have been tasked to identify differences between the two using [historical trip data](https://divvybikes.com/system-data "Original data sets"), which has been provided by [Divvy](https://divvybikes.com/ "Divvy's website"). I wrote a [separate Markdown](./01_data_processing.html "Cyclistic Case Study Part I - Data Processing") in which I processed the data and a [script](./r_scripts/load.R) to import it. The focus of this Markdown is to analyze the data and identify differences between members and casuals that can inform Cyclistic's marketing strategy.
 
 ## The data
 
