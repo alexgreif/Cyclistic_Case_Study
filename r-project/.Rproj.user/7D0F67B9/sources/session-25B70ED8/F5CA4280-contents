@@ -1,0 +1,47 @@
+# Load packages
+library("tidyverse")
+library("kableExtra")
+
+# Customized ggplot with color palette and legend ------------------------------
+my_ggplot <- function (...,
+                       color_palette = c("casual" = "#F28E2A",
+                                         "member" = "#37808E")) {
+  ggplot(...) +
+    scale_color_manual(values = color_palette) +
+    scale_fill_manual(values = color_palette) +
+    theme_bw() +
+    theme(legend.title = element_blank(), legend.position = "top")
+}
+
+# Kable styling ----------------------------------------------------------------
+kable_custom <- function (x, caption = NA, full_width = FALSE) {
+  if (nrow(x) > 0) {
+    # Round
+    x <- x %>%
+      ungroup() %>% 
+      mutate(across(where(~(is.double(.) & !inherits(., "POSIXct"))),
+                    ~round(., 1) %>% format(., nsmall=1)))
+    
+    if ("member_casual" %in% colnames(x)) {
+      # Color rows
+      x <- x %>%
+        mutate(across(everything(),
+                      ~cell_spec(., color = ifelse(member_casual == "member",
+                                                   "#37808E", "#F28E2A"))))
+    } else if (any(grepl("casual", colnames(x)))) {
+      # Color columns
+      x <- x %>%
+        ungroup() %>%
+        mutate(across(contains("member"), ~cell_spec(., color = "#37808E")),
+               across(contains("casual"), ~cell_spec(., color = "#F28E2A")))
+    }
+  }
+  
+  # Kable
+  x %>%
+    kbl(digits = 1, caption = caption, escape = F, align = "c") %>%
+    kable_styling(bootstrap_options = c("bordered", "striped"),
+                  full_width = full_width,
+                  position = "left",
+                  html_font = "sans-serif")
+}
