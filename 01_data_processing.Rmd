@@ -1,0 +1,791 @@
+---
+title: "Cyclistic Case Study"
+subtitle: "Part I - Data Processing"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: TRUE
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: TRUE
+---
+
+```{r setup, include=FALSE}
+# Setup markdown
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, cache = FALSE)
+```
+
+```{r logo, echo = FALSE, out.width = '10%'}
+htmltools::img(src = knitr::image_uri("images/cyclistic_logo.png"), 
+               alt = 'logo', 
+               style = 'position:absolute; top:10px; right:100px; padding:10px; max-width: 20%; height: auto;')
+```
+
+This is part I of a two-part series on this case study. You can find part II [here](./02_data_analysis.html "Cyclistic Case Study Part II - Analysis").  
+The final presentation of the findings can be downloaded as a [Powerpoint](./cyclistic.pptx "Presentation - Powerpoint") or [PDF](./cyclistic.pdf "Presentation - PDF").
+
+# Introduction
+
+This is a case study in Google's Data Analytics Professional Certificate. The goal is to help Cyclistic, a fictitious bike-share company based in Chicago, convert casuals to members. The term casual refers to a user without a membership that either pays for each individual ride or purchases a day pass. Members have annual contracts - I go into more detail in [Part II](./02_data_analysis.html "Cyclistic Case Study Part II - Analysis"). We have been tasked to identify differences between the two using [historical trip data](https://divvybikes.com/system-data "Original data sets"), which has been provided by [Divvy](https://divvybikes.com/ "Divvy's website"). I wrote a [separate R script](./r_scripts/load.R) to import the data. The aim of this Markdown is to process it to prepare it for analysis.
+
+# The data
+
+First, we need to load the data and some packages that I'll be using a lot. I'll also source some functions for customized plots and tables.
+
+```{r setup2}
+# Load packages
+library("tidyverse")
+library("kableExtra")
+
+# Load data
+load("data/r_data/data_raw.rda")
+data <- data_raw
+
+# Source functions
+source("r_scripts/functions.R")
+```
+
+## Format
+
+We can use dplyr's `glimpse()` to understand the data set's structure.
+
+```{r glimpse}
+glimpse(data)
+```
+
+The data set is a record of 5.723.532 bike trips and their time and location, bicycle type and customer type. The data types seem sensible at first glance. The only thing I would like to change is replacing the inefficient character `ride_id` column with numeric IDs. In order to do so, we first need to make sure that all current ride IDs are unique.
+
+```{r duplicate_ride_ids}
+# Number of duplicate ride_ids
+sum(duplicated(data$ride_id))
+```
+
+There are no duplicates, so we can simply replace the IDs with consecutive integers without loosing any information.
+
+```{r integer_ride_ids}
+# Replace ride_id with integers
+data <- data %>%
+  mutate(ride_id = 1:n())
+```
+
+Also, ride duration might be interesting and can be easily computed.
+
+```{r compute_metrics}
+# Compute ride duration
+data <- data %>%
+  mutate(ride_duration = as.numeric(difftime(ended_at,
+                                             started_at,
+                                             units = "min")))
+```
+
+## Content
+
+Now that everything is in the right format, it's time to dive deeper into the actual data to see whether there are any missing values or invalid observations. We can compute some summary statistics using base R's `summary()`.
+
+```{r summary_01}
+summary(data)
+```
+
+Here is what I see:
+
+* `Rideable_type` and `member_casual` seem fine. They are both categorical with three/two categories and all their values fit into one of the categories. The distinction between classic, docked and electric bikes is a little strange, so we might want to investigate that later.
+* All the values in `started_at` and `ended_at` have been classified as date-time. Values fall between April 1, 2021 and March 31, 2022 for started_at, which is in line with what we expected. Values for ended_at reach into April 1, 2022, so our data set apparently contains all the trips that started within April 2021 and March 2022, regardless of when they ended.
+* Station names and IDs contain a lot of missing values. These values could be valid though, since bikes might not necessarily need to be parked at stations. However, `start_station_id` contains fewer missing values than `start_station_name`. We might be able to infer the missing names based on IDs, but perhaps the missing names indicate that something is wrong with these observations. We'll have to look into that.
+* `Start_lat` and `start_lng` do not contain missing values, but their maximum values are suspicious, since they deviate a lot from the rest of the variables' summary statistics.
+* `End_lat` and `end_lng` summary statistics are more sensible. However, these do contatin quite a few missing values. While missing start and end stations make sense, missing positions do not. Maybe these are indicators of technical errors, such as empty batteries, which would likely make the rest of the variables for these observations invalid as well.
+* Values for `ride_duration` fall into a huge range of multiple weeks, even though the majority of values seem to fall into a much smaller range. Negative trip durations are impossible and trip durations of multiple days, while possible, do not make a lot of sense either and should be further investigated.
+
+We can now dig deeper based on these preliminary findings. Particularly, we need to examine ride duration and all variables related to start and end locations. Let's start by looking at `ride_duration`.
+
+# Ride duration I
+
+## Distribution
+
+After looking at some basic descriptive statistics, I am interested in the distribution of ride durations.
+
+```{r histogram_01}
+# Plot ride duration
+data %>%
+  ggplot() +
+  geom_histogram(aes(x = ride_duration/60/24),
+                 binwidth = 1, boundary = 0, color = "black") +
+  xlab("ride_duration (days)")
+```
+
+Since so many values fall between 0 and 24 hours, it is impossible to distinguish between other bins. Zooming in might help us understand these less common durations.
+
+```{r histogram_zoom_01}
+# Plot ride duration zoomed in
+data %>%
+  my_ggplot() +
+  geom_histogram(aes(x = ride_duration/60/24),
+                 binwidth = 1, boundary = 0, color = "black") +
+  coord_cartesian(ylim = c(0, 1000)) +
+  xlab("ride_duration (days)")
+```
+
+There are more than 625 trips with negative durations. Since start and/or end times of these observations are incorrect, their other measures might be wrong too and hence should not be included in the analysis. Before removing any observations though, I am interested whether ride durations differ between certain bike or membership types, so I'll create a table of summary statistics by group...
+
+```{r duration_grouped}
+# ride_duration extreme values by group
+data %>%
+  group_by(member_casual, rideable_type) %>%
+  summarize(min = min(ride_duration),
+            max = max(ride_duration),
+            mean = mean(ride_duration),
+            sd = sd(ride_duration),
+            n = n()) %>%
+  ungroup() %>%
+  mutate(percentage = n*100 / sum(n)) %>%
+  kable_custom()
+```
+
+... and another histogram by group.
+
+```{r histogram_grouped_01}
+# Plot ride_duration zoomed in by group
+data %>%
+  my_ggplot() +
+  geom_histogram(aes(x = ride_duration/60/24),
+                 binwidth = 1, boundary = 0, color = "black") +
+  coord_cartesian(ylim = c(0, 1000)) +
+  scale_y_continuous(breaks = seq(0,1000,250)) +
+  xlab("ride_duration (days)") +
+  facet_grid(rows = vars(member_casual), cols = vars(rideable_type))
+```
+
+Key observations are:
+
+* Negative trip durations occur in all groups and are only slightly more common (relatively) in electric bikes.
+* Docked bikes seem to be responsible for all trips with a duration of more than 26 hours.
+* Docked bikes stand out due to their high number of long trips and their relatively low number of total trips.
+* Docked bikes have not been used by members.
+
+Unfortunately, I cannot find anything on docked bikes in either the case study scenario provided by Google (where there is no mention of electric bikes either), or Divvy's website (https://divvybikes.com/), who provide the real-world data set for this case study. Given that docked bikes stand out in terms of trip durations and the fact that they have only been used by casuals and I cannot find any explanations for either, I decided to remove these data points and continue my analysis without docked bikes. If this were a real-life case, I would obviously get help from others, however, I think looking at electric bikes vs classic bikes is sufficient for this case study.
+
+## Removing outliers
+
+I am going to track any changes I make along with their type (modification vs removal of observations) and their specific reasons in a changelog. In order to do so efficiently, I'll create a function that I'll be able to use whenever I modify or remove observations.
+
+```{r changelog_function}
+# Custom function for tracking changes
+track_changes <- function (data, data_old, changelog, type, reason) {
+  # Extract affected rows
+  cl_temp <- anti_join(data_old, data) %>%
+    select(ride_id, member_casual, rideable_type) %>%
+    add_column(type = type, reason = reason) %>% # add type and reason
+    distinct() # select only distinct observations for long format
+  
+  # Bind to existing entries
+  bind_rows(changelog, cl_temp)
+}
+
+# Set up changelog
+changelog <- tibble()
+```
+
+Now that we're set up, we can delete the unneeded rows...
+
+```{r change_01_docked}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Delete observations where rideable_type == docked_bike
+data <- data %>% filter(rideable_type != "docked_bike")
+
+# Remove unneeded factor level
+data$rideable_type <- fct_drop(data$rideable_type)
+```
+
+... and record the changes we made.
+
+```{r changelog_01_docked}
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog, "removal", "docked_bikes")
+```
+
+I also found on [Divvy's website](https://divvybikes.com/system-data "Divvy data") that their data sets are not supposed to include any trips with a duration of less than 1 minute, since these are commonly caused by false starts or users trying to redock their bikes. Accordingly, I decided to remove these trips. This also takes care of trips with negative durations. Even though this might remove a small number of valid observations, the majority of the data points affected were most likely created through technical errors or other odd events and are thus invalid.
+
+```{r changelog_02_1min}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Delete observations where ride_duration < 1 min
+data <- data %>% filter(ride_duration >= 1)
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog, "removal", "duration_<_1min")
+```
+
+## New distribution
+
+Let's plot ride duration again for the remaining observations.
+
+```{r histogram_02}
+# Plot ride duration again
+data %>%
+  my_ggplot() +
+  geom_histogram(aes(x = ride_duration/60),
+                 binwidth = 1, boundary = 0, color = "black") +
+  xlab("ride_duration (hours)")
+```
+
+And zoomed in.
+
+```{r histogram_zoom_02}
+# Plot ride duration again zoomed in
+data %>%
+  my_ggplot() +
+  geom_histogram(aes(x = ride_duration/60),
+                 binwidth = 1, boundary = 0, color = "black") +
+  coord_cartesian(ylim = c(0, 150000)) +
+  xlab("ride_duration (hours)")
+```
+
+This looks much better already. The range has gotten a lot smaller. However, there are still some very long trips and the spike in trips that took between 24 and 25 hours is particularly odd.
+
+We could simply choose an arbitrary cutoff e.g. based on Tukey (upper quartile + 1.5*IQR), even though that one in particular seems a bit conservative in this case as it would throw out all trips with a duration of more than half an hour. Using the 99th percentile for example would leave us with only trips lasting less than 1 3/4 hours. An arbitrary cut off at 3 hours would leave us with 99.68% of observations.
+
+Even though any arbitrary cutoff will almost certainly remove not only invalid observations, but valid ones as well, this could easily be justified by the fact that these extreme customer behaviors should not affect our marketing recommendations anyway. Instead, we should focus on properly targetting the majority of casuals, particularly the ones likely to convert (which are probably not the ones showcasing these extreme behaviors), rather than attempting to appeal to every single individual. However, I am curious whether there is a better way to filter out invalid observations using other variables that might be related to long trip durations. Accordingly, I will leave the data set as is for now.
+
+# Start and end location
+
+Other than trip duration, we also need to validate start and end stations and coordinates. Since there are certain relationships between station ID (`station_id`), name (`station_name`) and geographical coordinates (`lat` and `lng`), it makes sense to investigate them together rather than individually.
+
+## Multiple missing values
+
+First, lets look at missing values, beginning with observations in which both `start_station_id` and `start_station_name` are missing.
+
+```{r NA_start_ID_name}
+# Missing start_station_name and start_station_id by rideable_type
+data %>%
+  select(start_station_name, start_station_id, rideable_type) %>%
+  mutate(across(c(start_station_name, start_station_id), is.na)) %>%
+  mutate(both = start_station_name & start_station_id) %>%
+  group_by(rideable_type) %>%
+  summarize(missing_values = sum(both)) %>%
+  kable_custom()
+```
+
+It looks like classic bikes need to be parked at stations, while electric bikes do not. Fortunately, as we saw earlier, there are no missing values for `start_lat` and `start_lng`, so we probably don't need to be worried about the missing values for `start_station_id` and `start_station_name` for electric bikes. Let's examine end stations now.
+
+```{r NA_end_ID_name}
+# Missing end_station_name and end_station_id by rideable_type
+data %>%
+  select(end_station_name, end_station_id, rideable_type, member_casual) %>%
+  mutate(across(c(end_station_name, end_station_id), is.na)) %>%
+  mutate(both = end_station_name & end_station_id) %>%
+  group_by(rideable_type, member_casual) %>%
+  summarize(missing_values = sum(both)) %>%
+  kable_custom()
+```
+
+Even though classic bikes are supposed to be parked at stations, that's obviously not always the case. Earlier, we also noticed that there were some missing geographic coordinates for end locations. Let's summarize these data points to see whether there is a connection.
+
+```{r summary_02_NA_end_coord}
+# Summary where is.na(end_lat & end_lng)
+data %>%
+  filter(is.na(end_lat) & is.na(end_lng)) %>%
+  summary()
+```
+
+None of the observations with missing `end_lat` and `end_lng` have data for station name or ID that could be used to infer the missing values. Also notice that these are all classic bikes, more than three quarters of these trips were made by casuals and the ride durations are extremely high. Whether they represent cases of misuse or technical errors, these observations are very likely invalid and at the very least irrelevant for what we are looking to achieve. They can thus be removed.
+
+```{r changelog_03_NA_end_coord}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Remove where end_lat and end_lng are NA
+data <- data %>% filter(!is.na(end_lat) | !is.na(end_lng))
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog,
+                           "removal", "no_geographical_coordinates")
+```
+
+Deleting these observations did not get rid of all missing values for `end_station_id` and `end_station_name` for classic bikes. However, the remaining observations at least have geographical coordinates that could be used to infer station names and IDs. Let's look at the summary statistics of those observations.
+
+```{r summary_03_NA_end_ID_classic}
+data %>%
+  filter((is.na(end_station_id) & rideable_type == "classic_bike")) %>%
+  summary()
+```
+
+Apparently, these values are not missing at random, as their ride durations are highly different from the rest of the observations. I cannot see any reasons why this would be the case if these data points were valid, so I am going to delete them.
+
+```{r changelog_04_NA_end_ID_classic}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Delete classic bike trip with no end station
+data <- data %>%
+  filter(!(is.na(end_station_id) & rideable_type == "classic_bike"))
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog,
+                           "removal", "classic_and_no_end_station")
+```
+
+## Missing station name or ID
+
+Let's now look at observations where either station name **or** ID, and/or either latitude **or** longitude are missing. In order to do so efficiently for start and end locations at the same time, I am going to first reshape the data frame to a longer format, where start and end location of a given trip each make up distinct observations.
+
+```{r long_format}
+# Long format for stations
+data <- data %>%
+  pivot_longer(cols = matches("^start_|^end_"),
+               names_to = c("type", ".value"),
+               names_pattern = '(^[^_]+(?=_))_(.*)') %>%
+  mutate(type = as.factor(type))
+
+# Glimpse
+glimpse(data)
+```
+
+This format will make the upcoming operations much easier. Now we can look for observations with either missing station name **or** ID for start and end stations at the same time.
+
+```{r}
+# Find observations where one is missing
+data %>%
+  filter((is.na(station_name) & !is.na(station_id)) |
+                       (is.na(station_id) & !is.na(station_name)) |
+                       (is.na(lat) & !is.na(lng)) |
+                       (is.na(lng) & !is.na(lat))) %>%
+  kable_custom()
+```
+
+All three observations are missing start station names. Let's see whether we can use the station IDs to find their names.
+
+```{r NA_start_name}
+# Find all station names associated with the three station IDs
+data %>%
+  select(station_id, station_name) %>%
+  filter(station_id %in% c("13221", "20215", "WL-008")) %>%
+  group_by(station_id, station_name) %>%
+  summarize(n = n()) %>%
+  kable_custom()
+```
+
+Each of the three IDs is associated with one specific station name, which is only missing for one observation. Since there is nothing curious about the observations, other than the missing station name, I will simply assign the station names based on their IDs. Now that the data is in this longer format, we need to be careful with our changelog, since two removed rows do not necessarily equate to two removed observations, since both rows could belong to the same trip. I am going to use "n" to refer to the number of deleted rows and "trips" to refer to the number of deleted observations.
+
+```{r changelog_05_NA_start_names}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Assign station names based on station IDs
+data <- data %>%
+  mutate(station_name = as.factor(case_when(
+    station_id == "13221" ~ "Wood St & Milwaukee Ave",
+    station_id == "20215" ~ "Hegewisch Metra Station",
+    station_id == "WL-008" ~ "Clinton St & Roosevelt Rd",
+    TRUE ~ as.character(station_name))))
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog,
+                           "modification", "fix_NA_station_names")
+```
+
+## Station names associated with multiple IDs
+
+Next, I would like to know whether there are any station names that are associated with more than one station ID.
+
+```{r multiple_IDs}
+# Find station_names that are associated with multiple station_ids
+data %>%
+  mutate(start = ifelse(type == "start", TRUE, FALSE),
+         end = ifelse(type == "end", TRUE, FALSE)) %>%
+  group_by(station_name, station_id) %>%
+  summarize(n = n(),
+            start = as.logical(sum(start)),
+            end = as.logical(sum(end))) %>%
+  group_by(station_name) %>%
+  filter(n() > 1) %>%
+  kable_custom()
+```
+
+There are two station names in our data set that each are associated with two different IDs. We should try to find out whether, despite having two IDs, these station names still always refer to the same station. In order to do so, we can look at their geographical coordinates and the time frames in which each station has been used. We will only consider classic bike trips, since geographical coordinates are more variable for electric bikes and can vary even for individual stations.
+
+```{r multiple_IDs_times}
+# Look at stations that are associated with multiple IDs
+data %>%
+  filter(station_name %in% c("Lakefront Trail & Bryn Mawr Ave",
+                             "Loomis St & 89th St") &
+           rideable_type == "classic_bike") %>%
+  group_by(station_name, station_id, lat, lng) %>%
+  summarize(min = min(started_at),
+            max = max(started_at)) %>%
+  kable_custom()
+```
+
+It seems that both stations were closed for a bit and then reopened under the same name but using a different ID. However, *Loomis St & 89th St* stayed in exactly the same location, while *Lakefront Trail & Bryn Mawr Ave* seemed to only have moved slightly. We can calculate the distance in meters via the Haversine Distance.
+
+```{r haversine_distance}
+# Distance between two station versions
+geosphere::distHaversine(c(41.98404, -87.65231), c(41.98404, -87.65228))
+```
+
+Since *Loomis St & 89th St* has not moved at all and *Lakefront Trail & Bryn Mawr Ave* moved less than 3.5m, I think it makes sense for our purposes to treat both "versions" of each station as the same station. Hence, I will replace the old IDs with the new ones. But first, we need to make sure that neither of the IDs is associated with another station name.
+
+```{r multiple_IDs_stations}
+# Find all station names associated with IDs
+data %>%
+  filter(station_id %in% c("KA1504000152", "15576", "201022", "20102")) %>%
+  group_by(station_id, station_name) %>%
+  summarize(n = n()) %>%
+  kable_custom()
+```
+
+Seems like we're good to go, so we can simply replace the old IDs with the new ones.
+
+```{r changelog_06_multiple_IDs}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Same IDs for same stations
+data <- data %>%
+  mutate(station_id = as.factor(case_when(
+    station_id == "KA1504000152" ~ "15576",
+    station_id == "201022" ~ "20102",
+    TRUE ~ as.character(station_id))))
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog,
+                           "modification", "multiple_IDs_for_same_station")
+```
+
+## Station IDs associated with multiple names
+
+Now that we've looked at station names that are associated with multiple IDs, we can do the same the other way around.
+
+```{r multiple_names}
+# Find station_IDs that are associated with multiple station_names
+data %>%
+  mutate(start = ifelse(type == "start", TRUE, FALSE),
+         end = ifelse(type == "end", TRUE, FALSE)) %>%
+  group_by(station_name, station_id) %>%
+  summarize(n = n(),
+            min = min(ride_duration),
+            mean = mean(ride_duration),
+            median = median(ride_duration),
+            max = max(ride_duration),
+            casuals_perc = 100*sum(member_casual == "casual")/n(),
+            start = as.logical(sum(start)),
+            end = as.logical(sum(end))) %>%
+  group_by(station_id) %>%
+  filter(n() > 1) %>%
+  arrange(station_id) %>%
+  relocate(2) %>%
+  kable_custom() %>%
+  scroll_box(width = "100%", height = "300px")
+```
+
+Since, by design, IDs can be associated with multiple names, it is not surprising that we found a few of those cases. I won't change those station names to be consistent, since it's perfectly possible that the names actually changed at some point. However, it is important to take this into account later when analyzing members and casuals regarding their station usage, when we might be better off using IDs rather than names. Other than that, the one thing that seems a bit strange is station "351" whose name is the same as its ID. However, other than what is apparently a naming error that only occurred twice, the station seems perfectly normal. I think we can simply change the station name for those two observations and keep them in our data set.
+
+```{r changelog_07_identical}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Change station name according to ID
+data <- data %>%
+  mutate(station_name = ifelse(station_name == "351",
+                        "Mulligan Ave & Wellington Ave",
+                        as.character(station_name)) %>%
+           as.factor())
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog,
+                           "modification", "ID_instead_of_name")
+```
+
+## Curious station names and IDs
+
+Let's see whether there are any more observations where station ID and name are identical.
+
+```{r identical}
+# Identical station ID and name
+data %>%
+  filter(as.character(station_id) == as.character(station_name)) %>%
+  group_by(station_id, station_name) %>%
+  summarize(n = n(),
+            min = min(ride_duration),
+            mean = mean(ride_duration),
+            median = median(ride_duration),
+            max = max(ride_duration),
+            casuals_perc = 100*sum(member_casual == "casual")/n()) %>%
+  kable_custom()
+```
+
+Based on their names, their very low traffic and the mostly unusual ride durations, these stations seem to be service or repair stations. They are probably used mainly for service trips and thus irrelevant to our analysis and can be removed.
+
+```{r changelog_08_service}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Delete observations where station ID and name are identical
+data <- data %>%
+  filter(as.character(station_id) != as.character(station_name) |
+           is.na(station_id) | is.na(station_name))
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog,
+                           "removal", "identical_ID_and_name")
+```
+
+Now we should check if there are any other stations that contain the key words "test", "repair" or "charging".
+ 
+```{r service_search}
+# Search for other stations
+data %>%
+  filter(if_any(matches("name$|id$"),
+                ~ str_detect(.,regex("test|repair|charging",
+                                     ignore_case = TRUE)))) %>%
+  group_by(station_id, station_name) %>%
+  summarize(n = n(),
+            min = min(ride_duration),
+            mean = mean(ride_duration),
+            median = median(ride_duration),
+            max = max(ride_duration),
+            casuals_perc = 100*sum(member_casual == "casual")/n()) %>%
+  kable_custom()
+```
+ 
+This station too seems to be a service station or warehouse which is used for internal operations. The observations are thus likely irrelevant and can be removed.
+
+```{r changelog_09_warehouse}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Delete Warehouse observations
+data <- data %>%
+  filter(station_name != "Base - 2132 W Hubbard Warehouse" |
+           is.na(station_name))
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog, "removal", "warehouse")
+```
+
+Let's see if there are other station names or IDs containing the word "warehouse".
+
+```{r warehouse}
+# Stations names or IDs that contain the word "warehouse"
+data %>%
+  filter(if_any(matches("name$|id$"),
+                ~ str_detect(.,regex("warehouse",
+                                     ignore_case = TRUE)))) %>%
+  group_by(station_id, station_name) %>%
+  summarize(n = n(),
+            min = min(ride_duration),
+            mean = mean(ride_duration),
+            median = median(ride_duration),
+            max = max(ride_duration),
+            casuals_perc = 100*sum(member_casual == "casual")/n()) %>%
+  kable_custom()
+```
+
+The search did not identify any other stations. This is all I can think of in terms of cleaning station IDs and names. Lastly, let's check for the extreme values in `start_lat` and `start_lng` that we saw earlier.
+
+```{r extreme_coord}
+# Find min and max coordinates
+data %>%
+  summarize(min_lat = min(lat),
+            max_lat = max(lat),
+            min_lng = min(lng),
+            max_lng = max(lng)) %>%
+  kable_custom()
+```
+
+Seems like we already deleted those extreme observations, as these values here all fall within the expected range.
+
+# Ride duration II
+
+## Recheck distribution
+
+All that's left to do now is examine ride duration in combination with start and end locations in order to possibly identify more invalid data points. First, we need to get the data frame back into its original format.
+
+```{r wide_format}
+# Keep only full observations (start and end)
+duplicate_ids <- table(data$ride_id) %>% .[.>1] %>% names() %>% as.numeric()
+data <- data %>% filter(ride_id %in% duplicate_ids)
+
+# Transform long to wide
+data <- data %>%
+  pivot_wider(names_from = "type",
+              values_from = c("station_name", "station_id", "lat", "lng"),
+              names_glue = "{type}_{.value}") %>%
+  relocate(colnames(data_raw))
+
+# Drop unneeded levels
+data <- droplevels(data)
+```
+
+Plot trip duration again to see whether anything has changed.
+
+```{r histogram_03}
+# Plot ride duration again
+data %>%
+  my_ggplot() +
+  geom_histogram(aes(x = ride_duration/60),
+                 binwidth = 1, boundary = 0, color = "black") +
+  xlab("ride_duration (hours)")
+```
+
+Zoom in and plot by bike and membership type. 
+
+```{r histogram_zoom_grouped}
+# Plot ride duration again zoomed in by group
+data %>%
+  my_ggplot() +
+  geom_histogram(aes(x = ride_duration/60),
+                 binwidth = 1, boundary = 0, color = "black") +
+  coord_cartesian(ylim = c(0, 1500)) +
+  xlab("ride_duration (hours)") +
+  facet_grid(rows = vars(member_casual), cols = vars(rideable_type))
+```
+
+Compared to the last time we examined `ride_duration`, we got rid of all of the values that were larger than 25 hours, as well as the spike in the number of trips that took between 24 and 25 hours.
+
+## Ride duration by station
+
+Now we can bring `ride_duration`, `station_id` and `station_name` together to hopefully identify some patterns in the remaining outliers in terms of start and/or end station that allow us to identify invalid observations. In order to do so, we can look at the stations that are associated with the highest mean ride durations. If any stations are only associated with unrealistically long rides, we could remove all observations from those stations.
+
+```{r high_duration_stations}
+# Top six start station IDs with highest mean ride duration 
+data %>%
+  group_by(start_station_id) %>%
+  summarize(mean_duration = mean(ride_duration),
+            n = n()) %>%
+  arrange(-mean_duration) %>%
+  head() %>%
+  kable_custom()
+
+# Top six start station names with highest mean ride duration
+data %>%
+  group_by(start_station_name) %>%
+  summarize(mean_duration = mean(ride_duration),
+            n = n()) %>%
+  arrange(-mean_duration) %>%
+  head() %>%
+  kable_custom()
+
+# Top six end station IDs with highest mean ride duration
+data %>%
+  group_by(end_station_id) %>%
+  summarize(mean_duration = mean(ride_duration),
+            n = n()) %>%
+  arrange(-mean_duration) %>%
+  head() %>%
+  kable_custom()
+
+# Top six end station names with highest mean ride duration
+data %>%
+  group_by(end_station_name) %>%
+  summarize(mean_duration = mean(ride_duration),
+            n = n()) %>%
+  arrange(-mean_duration) %>%
+  head() %>%
+  kable_custom()
+```
+
+Looks like no stations are exclusively used for extreme outliers in terms of ride duration. Unfortunately, this means that there are no patterns in the remaining observations that can help us identify invalid data points or find a ride duration cut-off.
+
+## Choosing a cut-off value
+
+With the size of the current data set, a few invalid data points would probably not affect our analysis too much. Yet, for reasons mentioned earlier (properly focusing on the majority of customers and potential members rather than trying to please every single one and letting extreme customer behaviors affect our marketing, possibly resulting in not properly targeting any customers), I would like to exclude some more outliers. Since there is no clear cut-off or other criteria by which we can define outliers or identify invalid data points, we will simply have to make an arbitrary, albeit informed, decision.
+
+According to their [website](https://divvybikes.com/pricing "Divvy pricing"), Divvy memberships include unlimited 45 minute rides, after which members need to either switch bikes or pay \$0.16 per minute. Non-members have to pay \$1 to unlock the bike and then start paying \$0.16 per minute straight from the start. A day pass includes unlimited 3-hour rides. Based on this information, it is relatively unlikely for anyone, member or casual, to ride their bike for more than three hours, since they could just switch bikes earlier to avoid any additional costs. Also, it would be pointless for customers that regularly do trips lasting 2 1/3 hours or longer to switch to a membership, because at \$0.16 per minute, a trip like that would already be more expensive than a day pass, even for a member that only starts paying after 45 minutes. Accordingly, unless Cyclistic are looking to change their membership conditions or pricing, these customers are not our targets for memberships. Yet, I will include every trip up to a duration of 4 hours. This will include people using a day pass and allows for a little margin on top of those three hours to include even those that perhaps miscalculated the duration of their trip or underestimated how long it would take them to get to the next station. However, I might subset the data set based on trip duration later in my analysis, depending on which question I am looking to answer.
+
+```{r changelog_10_240min}
+# Copy of unchanged dataframe
+data_old <- data
+
+# Exclude trip durations of more than 4 hours
+data <- data %>% filter(ride_duration <= 240)
+
+# Changelog entry
+changelog <- track_changes(data, data_old, changelog,
+                           "removal", "duration_>_240min")
+```
+
+# Wrap-up
+
+## Additional variables
+
+Before summarizing the data again, let's add some time related variables that will be interesting to analyze later.
+
+```{r}
+# Add day of the week, weekend, weekm month, time of day and date
+data <- data %>%
+  mutate(day_of_week = lubridate::wday(started_at, label = T, week_start = 1),
+         weekend = as.factor(ifelse(day_of_week %in% c("Sat", "Sun"),
+                                    "weekend",
+                                    "weekday")),
+         week = lubridate::isoweek(started_at),
+         month = lubridate::month(started_at, label = T, abbr = T),
+         hour = lubridate::hour(started_at),
+         minute = hour + lubridate::minute(started_at)/60,
+         second = minute + lubridate::second(started_at)/3600,
+         date = lubridate::date(started_at))
+```
+
+## Summary and Changelog
+
+Now we can summarize the resulting data set...
+
+```{r final}
+# Summarize final data set
+summary(data)
+```
+
+... and examine the changelog.
+
+```{r final_changelog}
+# Changelog by type and membership
+changelog %>%
+  group_by(type, member_casual) %>%
+  summarize(trips = n()) %>%
+  kable_custom()
+
+# Changelog by type and bike type
+changelog %>%
+  group_by(type, rideable_type) %>%
+  summarize(trips = n()) %>%
+  kable_custom()
+
+# Changelog by type, reason and membership
+changelog %>%
+  group_by(type, reason, member_casual) %>%
+  summarize(trips = n()) %>%
+  kable_custom(full_width = TRUE) %>%
+  scroll_box(height = "300px", width = "500px")
+
+# Changelog by type, bike type and membership
+changelog %>%
+  group_by(type, rideable_type, member_casual) %>%
+  summarize(trips = n()) %>%
+  kable_custom(full_width = TRUE) %>%
+  scroll_box(height = "300px", width = "400px")
+
+# Changelog by type, reason, bike type and membership
+changelog %>%
+  group_by(type, reason, rideable_type, member_casual) %>%
+  summarize(trips = n()) %>%
+  kable_custom(full_width = TRUE) %>%
+  scroll_box(height = "300px", width = "600px")
+```
+
+## Save
+
+Finally, we need to save the clean data, so that we can use it in our analysis. We'll also save the changelog to document and possibly communicate the cleaning process.
+
+```{r save}
+# Save clean data
+save(data, file = "data/r_data/data_cleaned.rda")
+
+# Save changelog
+save(changelog, file = "data/r_data/changelog.rda")
+```
+
+Continue with part II [here](./02_data_analysis.html "Cyclistic Case Study Part II - Analysis").
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
