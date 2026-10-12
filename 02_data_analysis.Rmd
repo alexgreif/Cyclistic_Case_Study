@@ -36,7 +36,7 @@ htmltools::img(src = knitr::image_uri("images/cyclistic_logo.png"),
 ```
 
 This is part II of a two-part series on this case study. You can find part I [here](./01_data_processing.html "Cyclistic Case Study Part I - Data Processing").  
-The final presentation of the findings can be downloaded as a [Powerpoint](../presentation/cyclistic.pptx "Presentation - Powerpoint") or [PDF](../presentation/cyclistic.pdf "Presentation - PDF").
+The final presentation of the findings can be downloaded as a [Powerpoint](presentation/cyclistic.pptx "Presentation - Powerpoint") or [PDF](presentation/cyclistic.pdf "Presentation - PDF").
 
 # Introduction
 
@@ -1085,6 +1085,6 @@ Unfortunately, our analysis does not come without limitations. First of all, our
 
 ## Conclusion
 
-We identified some key differences between members and casuals. First and foremost, we collected a lot of evidence that casuals use Cyclistic bikes mostly for leisure activities, while members seem to use them a lot more for commuting. Furthermore, we identified the busiest times of the day, days of the week and months. Lastly, we located the most popular stations and went into detail as to when, how and by whom they are being used. We will now have to prepare a convincing presentation to share with our stakeholders, including actionable recommendations to help develop a marketing strategy to convert casuals to members. The results of this analysis are going to form the basis for this presentation. You can download the final presentation as a [Powerpoint](../presentation/cyclistic.pptx "Presentation - Powerpoint") or [PDF](../presentation/cyclistic.pdf "Presentation - PDF").
+We identified some key differences between members and casuals. First and foremost, we collected a lot of evidence that casuals use Cyclistic bikes mostly for leisure activities, while members seem to use them a lot more for commuting. Furthermore, we identified the busiest times of the day, days of the week and months. Lastly, we located the most popular stations and went into detail as to when, how and by whom they are being used. We will now have to prepare a convincing presentation to share with our stakeholders, including actionable recommendations to help develop a marketing strategy to convert casuals to members. The results of this analysis are going to form the basis for this presentation. You can download the final presentation as a [Powerpoint](presentation/cyclistic.pptx "Presentation - Powerpoint") or [PDF](presentation/cyclistic.pdf "Presentation - PDF").
 
 <div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

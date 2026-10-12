@@ -2,7 +2,7 @@
 
 An R-based analysis of Chicago bike-share trips, completed as a capstone project for the Google Data Analytics Professional Certificate. The case study examines differences between annual members and casual riders to inform recommendations for a fictional bike-share company.
 
-The analysis uses Divvy trip data from April 2021 through March 2022, supplemented by historical weather data for Chicago.
+The analysis uses real trip data from Chicago-based bike-share company Divvy from April 2021 through March 2022, supplemented by historical weather data for Chicago.
 
 ## Results
 
@@ -11,20 +11,21 @@ The analysis uses Divvy trip data from April 2021 through March 2022, supplement
 - [Presentation (PDF)](presentation/cyclistic.pdf)
 - [Presentation (PowerPoint)](presentation/cyclistic.pptx)
 
-The HTML reports are also included in `r-project/` and can be opened locally in a browser.
+The HTML reports are also included in the repository root and can be opened locally in a browser.
 
 ## Repository structure
 
-- `r-project/01_data_processing.Rmd`: data inspection, cleaning and preparation.
-- `r-project/02_data_analysis.Rmd`: exploratory analysis and interpretation.
-- `r-project/r_scripts/`: data import, weather preparation and supporting exports.
-- `r-project/data/`: original data, saved R datasets and Tableau exports.
-- `r-project/images/`: report images and Tableau visualizations.
+- `01_data_processing.Rmd`: data inspection, cleaning and preparation.
+- `02_data_analysis.Rmd`: exploratory analysis and interpretation.
+- `r_scripts/`: data import, weather preparation and supporting exports.
+- `data/`: original data, saved R datasets and Tableau exports.
+- `images/`: report images and Tableau visualizations.
 - `presentation/`: the final presentation in PDF and PowerPoint formats.
 
 ## Data
 
-The original monthly trip files are available from [Divvy System Data](https://divvybikes.com/system-data). Weather data is included in `r-project/data/weather.xlsx`; its source is described in the analysis report.
+- **Trip data:** monthly files from [Divvy System Data](https://divvybikes.com/system-data), covering April 2021 through March 2022.
+- **Weather data:** historical temperature and precipitation data for the Chicago area from the [National Weather Service climate portal](https://www.weather.gov/wrh/climate?wfo=lot), covering the same period. The workbook is included as `data/weather.xlsx` and prepared by `r_scripts/weather.R`. The original workbook and script do not identify the specific weather station.
 
 CSV and R data files in this repository use **Git LFS**. Install Git LFS before cloning to retrieve their contents rather than small pointer files:
 
@@ -35,7 +36,7 @@ cd Cyclistic_Case_Study
 git lfs pull
 ```
 
-The LFS data totals approximately 1.43 GB. Reading the finished reports does not require downloading these datasets.
+The LFS data totals approximately 1.43 GB.
 
 ## Running the analysis
 
@@ -43,7 +44,7 @@ The original environment used R 4.2.1. The project still includes its historical
 
 The source files use `tidyverse`, `data.table`, `kableExtra`, `patchwork`, `geosphere`, `readxl`, `lubridate`, `scales`, `htmltools`, `knitr` and `rmarkdown`. Rendering the reports also requires Pandoc, which is included with RStudio.
 
-Run the analysis from `r-project/`. Its workflow is:
+Run the analysis from ``. Its workflow is:
 
 1. Import the monthly CSV files with `r_scripts/load.R`.
 2. Prepare the weather data with `r_scripts/weather.R`.
