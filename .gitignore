@@ -1,0 +1,14 @@
+# Operating system and editor state
+.DS_Store
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# Generated notebook caches
+*_cache/
+
+# Locally generated datasets and exports
+/data/r_data/*.rda
+/data/tableau_data/*.rda
+/tableau_ppt.rda
