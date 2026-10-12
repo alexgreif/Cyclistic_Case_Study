@@ -64,7 +64,7 @@ Rscript -e 'rmarkdown::render("01_data_processing.Rmd")'
 Rscript -e 'rmarkdown::render("02_data_analysis.Rmd")'
 ```
 
-These commands overwrite the local HTML reports; the first report also saves the cleaned dataset. The validation used the existing raw R dataset from Git LFS and separately regenerated the weather dataset. Re-importing the original CSV files remains a follow-up; see [TODO.md](TODO.md).
+These commands overwrite the local HTML reports; the first report also saves the cleaned dataset. The unchanged import script has also been validated against all 12 original monthly CSV files from Divvy, which match the repository copies byte-for-byte. The imported dataset reproduces the existing 5,723,532 rows and 13 columns within floating-point precision. The weather dataset was regenerated and matches the original. Future changes to data distribution are tracked in [TODO.md](TODO.md).
 
 ## Maintenance note
 
