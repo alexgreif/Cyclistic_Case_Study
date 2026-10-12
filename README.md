@@ -50,7 +50,7 @@ Rscript -e 'renv::restore()'
 
 `renv.lock` records the direct and transitive dependencies. Installed packages are kept in an ignored local library rather than committed to Git. Linux installations may also require system libraries for individual R packages.
 
-Run the analysis from ``. Its workflow is:
+Run the analysis from the repository root. Its workflow is:
 
 1. Import the monthly CSV files with `r_scripts/load.R`.
 2. Prepare the weather data with `r_scripts/weather.R`.
@@ -64,4 +64,8 @@ Rscript -e 'rmarkdown::render("01_data_processing.Rmd")'
 Rscript -e 'rmarkdown::render("02_data_analysis.Rmd")'
 ```
 
-These commands overwrite the local HTML reports; the first report also saves the cleaned dataset. The validation used the existing raw R dataset from Git LFS and separately regenerated the weather dataset. Re-importing the original CSV files remains a follow-up, as do a few plotting and empty-subset warnings in the existing report code; see [TODO.md](TODO.md).
+These commands overwrite the local HTML reports; the first report also saves the cleaned dataset. The validation used the existing raw R dataset from Git LFS and separately regenerated the weather dataset. Re-importing the original CSV files remains a follow-up, and known runtime warnings have been reviewed and documented; see [TODO.md](TODO.md).
+
+## Maintenance note
+
+This repository was reorganized and its R dependency setup updated in 2026 with assistance from generative AI. The original analysis logic and interpretation have been retained; changes concern documentation, file organization, presentation links and reproducibility. It is a maintained version rather than an exact snapshot of the original capstone submission.
