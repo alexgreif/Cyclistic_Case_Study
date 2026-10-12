@@ -18,7 +18,7 @@ The HTML reports are also included in the repository root and can be opened loca
 - `01_data_processing.Rmd`: data inspection, cleaning and preparation.
 - `02_data_analysis.Rmd`: exploratory analysis and interpretation.
 - `r_scripts/`: data import, weather preparation and supporting exports.
-- `data/`: original data, saved R datasets and Tableau exports.
+- `data/`: original trip CSVs and weather workbook, plus directories for locally generated datasets and exports.
 - `images/`: report images and Tableau visualizations.
 - `presentation/`: the final presentation in PDF and PowerPoint formats.
 
@@ -27,7 +27,7 @@ The HTML reports are also included in the repository root and can be opened loca
 - **Trip data:** monthly files from [Divvy System Data](https://divvybikes.com/system-data), covering April 2021 through March 2022.
 - **Weather data:** historical temperature and precipitation data for **Chicago O’Hare International Airport** (NOAA station `USW00094846`) from the [National Weather Service climate portal](https://www.weather.gov/wrh/climate?wfo=lot), covering the same period. The workbook is included as `data/weather.xlsx` and prepared by `r_scripts/weather.R`. The station was identified by comparing all 365 daily records against [NOAA daily summaries](https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094846&startDate=2021-04-01&endDate=2022-03-31&format=json&units=standard&dataTypes=TMAX,TMIN,PRCP). Temperatures match the mean of the daily maximum and minimum in °F; precipitation matches in inches, treating trace amounts (`T`) as zero as the script does.
 
-CSV and R data files in this repository use **Git LFS**. Install Git LFS before cloning to retrieve their contents rather than small pointer files:
+The original trip CSV files in this repository use **Git LFS**. Install Git LFS before cloning to retrieve their contents rather than small pointer files:
 
 ```sh
 git lfs install
@@ -36,7 +36,9 @@ cd Cyclistic_Case_Study
 git lfs pull
 ```
 
-The LFS data totals approximately 1.43 GB.
+The trip CSV files total approximately 1.06 GB. Generated R datasets and Tableau exports are not committed; the existing scripts recreate them locally.
+
+To obtain the trip files directly, follow the download link on [Divvy System Data](https://divvybikes.com/system-data) and select the 12 monthly ZIP archives from `202104-divvy-tripdata.zip` through `202203-divvy-tripdata.zip`. Extract their CSV files into `data/divvy_data/`. For example, [the April 2021 archive](https://divvy-tripdata.s3.amazonaws.com/202104-divvy-tripdata.zip) contains `202104-divvy-tripdata.csv`.
 
 ## Running the analysis
 
@@ -57,14 +59,16 @@ Run the analysis from the repository root. Its workflow is:
 3. Render `01_data_processing.Rmd`, which saves the cleaned dataset.
 4. Render `02_data_analysis.Rmd` using the cleaned data and weather data.
 
-The saved datasets are currently included via Git LFS, so steps 1 and 2 can be skipped when using those files. To regenerate the reports:
+Run all four steps to prepare the local datasets and regenerate the reports:
 
 ```sh
+Rscript r_scripts/load.R
+Rscript r_scripts/weather.R
 Rscript -e 'rmarkdown::render("01_data_processing.Rmd")'
 Rscript -e 'rmarkdown::render("02_data_analysis.Rmd")'
 ```
 
-These commands overwrite the local HTML reports; the first report also saves the cleaned dataset. The unchanged import script has also been validated against all 12 original monthly CSV files from Divvy, which match the repository copies byte-for-byte. The imported dataset reproduces the existing 5,723,532 rows and 13 columns within floating-point precision. The weather dataset was regenerated and matches the original. Future changes to data distribution are tracked in [TODO.md](TODO.md).
+These commands create local R datasets and overwrite the local HTML reports; the first report also saves the cleaned dataset and its change log. The unchanged import script has also been validated against all 12 original monthly CSV files from Divvy, which match the repository copies byte-for-byte. The imported dataset reproduces the existing 5,723,532 rows and 13 columns within floating-point precision. The weather dataset was regenerated and matches the original. Optional Tableau exports can be regenerated after data processing with `Rscript r_scripts/tableau.R`; `r_scripts/powerpoint.R` contains the original supporting calculations for the presentation.
 
 ## Maintenance note
 
