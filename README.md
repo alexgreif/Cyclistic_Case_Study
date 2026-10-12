@@ -25,7 +25,7 @@ The HTML reports are also included in the repository root and can be opened loca
 ## Data
 
 - **Trip data:** monthly files from [Divvy System Data](https://divvybikes.com/system-data), covering April 2021 through March 2022.
-- **Weather data:** historical temperature and precipitation data for the Chicago area from the [National Weather Service climate portal](https://www.weather.gov/wrh/climate?wfo=lot), covering the same period. The workbook is included as `data/weather.xlsx` and prepared by `r_scripts/weather.R`. The original workbook and script do not identify the specific weather station.
+- **Weather data:** historical temperature and precipitation data for **Chicago O’Hare International Airport** (NOAA station `USW00094846`) from the [National Weather Service climate portal](https://www.weather.gov/wrh/climate?wfo=lot), covering the same period. The workbook is included as `data/weather.xlsx` and prepared by `r_scripts/weather.R`. The station was identified by comparing all 365 daily records against [NOAA daily summaries](https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094846&startDate=2021-04-01&endDate=2022-03-31&format=json&units=standard&dataTypes=TMAX,TMIN,PRCP). Temperatures match the mean of the daily maximum and minimum in °F; precipitation matches in inches, treating trace amounts (`T`) as zero as the script does.
 
 CSV and R data files in this repository use **Git LFS**. Install Git LFS before cloning to retrieve their contents rather than small pointer files:
 
