@@ -64,8 +64,8 @@ Rscript -e 'rmarkdown::render("01_data_processing.Rmd")'
 Rscript -e 'rmarkdown::render("02_data_analysis.Rmd")'
 ```
 
-These commands overwrite the local HTML reports; the first report also saves the cleaned dataset. The validation used the existing raw R dataset from Git LFS and separately regenerated the weather dataset. Re-importing the original CSV files remains a follow-up, and known runtime warnings have been reviewed and documented; see [TODO.md](TODO.md).
+These commands overwrite the local HTML reports; the first report also saves the cleaned dataset. The validation used the existing raw R dataset from Git LFS and separately regenerated the weather dataset. Re-importing the original CSV files remains a follow-up; see [TODO.md](TODO.md).
 
 ## Maintenance note
 
-This repository was reorganized and its R dependency setup updated in 2026 with assistance from generative AI. The original analysis logic and interpretation have been retained; changes concern documentation, file organization, presentation links and reproducibility. It is a maintained version rather than an exact snapshot of the original capstone submission.
+In 2026, this repository was reorganized, a README was added and the R package environment was updated with assistance from generative AI. The analysis code and interpretation are unchanged, and the original reports and presentation files are retained. Presentation links in the report sources and HTML files were adjusted to the new file locations. This is a maintained version rather than an exact snapshot of the original capstone submission.
