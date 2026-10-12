@@ -40,9 +40,15 @@ The LFS data totals approximately 1.43 GB.
 
 ## Running the analysis
 
-The original environment used R 4.2.1. The project still includes its historical Packrat environment, which contains macOS-specific installed packages; its dependency setup has not yet been modernized or verified on a fresh installation.
+The original analysis used R 4.2.1. The project now uses `renv` to record and restore its R package versions. Both reports have been regenerated in an isolated Linux environment using **R 4.6.1** and **Pandoc 3.9**. The regenerated cleaned dataset matches the existing dataset in all 22 columns and 5,316,182 rows.
 
-The source files use `tidyverse`, `data.table`, `kableExtra`, `patchwork`, `geosphere`, `readxl`, `lubridate`, `scales`, `htmltools`, `knitr` and `rmarkdown`. Rendering the reports also requires Pandoc, which is included with RStudio.
+Install R and Pandoc (or RStudio, which includes Pandoc), then restore the packages from the repository root:
+
+```sh
+Rscript -e 'renv::restore()'
+```
+
+`renv.lock` records the direct and transitive dependencies. Installed packages are kept in an ignored local library rather than committed to Git. Linux installations may also require system libraries for individual R packages.
 
 Run the analysis from ``. Its workflow is:
 
@@ -51,4 +57,11 @@ Run the analysis from ``. Its workflow is:
 3. Render `01_data_processing.Rmd`, which saves the cleaned dataset.
 4. Render `02_data_analysis.Rmd` using the cleaned data and weather data.
 
-The saved datasets are currently included via Git LFS, so steps 1 and 2 can be skipped when using those files. A clean-environment reproduction check and dependency cleanup are planned separately.
+The saved datasets are currently included via Git LFS, so steps 1 and 2 can be skipped when using those files. To regenerate the reports:
+
+```sh
+Rscript -e 'rmarkdown::render("01_data_processing.Rmd")'
+Rscript -e 'rmarkdown::render("02_data_analysis.Rmd")'
+```
+
+These commands overwrite the local HTML reports; the first report also saves the cleaned dataset. The validation used the existing raw R dataset from Git LFS and separately regenerated the weather dataset. Re-importing the original CSV files remains a follow-up, as do a few plotting and empty-subset warnings in the existing report code; see [TODO.md](TODO.md).
