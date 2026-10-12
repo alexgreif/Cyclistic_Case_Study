@@ -23,7 +23,7 @@ htmltools::img(src = knitr::image_uri("images/cyclistic_logo.png"),
 ```
 
 This is part I of a two-part series on this case study. You can find part II [here](./02_data_analysis.html "Cyclistic Case Study Part II - Analysis").  
-The final presentation of the findings can be downloaded as a [Powerpoint](./cyclistic.pptx "Presentation - Powerpoint") or [PDF](./cyclistic.pdf "Presentation - PDF").
+The final presentation of the findings can be downloaded as a [Powerpoint](../presentation/cyclistic.pptx "Presentation - Powerpoint") or [PDF](../presentation/cyclistic.pdf "Presentation - PDF").
 
 # Introduction
 

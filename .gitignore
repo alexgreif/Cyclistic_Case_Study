@@ -1,0 +1,9 @@
+# Operating system and editor state
+.DS_Store
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# Generated notebook caches
+*_cache/
